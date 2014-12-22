@@ -91,6 +91,8 @@ class RenderState:
     # Note that this flag is set to False only after the first frame
     # has been written to file.
     is_preview = True
+    # flag to guarantee that only one fill is created per render
+    is_fill_written = False
 
 
 @persistent
@@ -171,7 +173,7 @@ class SVGExporterPanel(bpy.types.Panel):
         svg = scene.svg_export
         freestyle = scene.render.layers.active.freestyle_settings
 
-        layout.active = (svg.use_svg_export and freestyle.mode != 'SCRIPT')
+        layout.active = (svg.use_svg_export)# and freestyle.mode != 'SCRIPT')
 
         row = layout.row()
         row.prop(svg, "mode", expand=True)
@@ -459,6 +461,9 @@ class SVGFillShaderCallback(ParameterEditorCallback):
         if not (scene.render.use_freestyle and scene.svg_export.use_svg_export and scene.svg_export.object_fill):
             return
 
+        if RenderState.is_fill_written:
+            return
+
         # reset the stroke selection (but don't delete the already generated strokes)
         Operators.reset(delete_strokes=False)
         # shape detection
@@ -473,6 +478,7 @@ class SVGFillShaderCallback(ParameterEditorCallback):
         shader = SVGFillShader(create_path(scene), render_height(scene), lineset.name)
         Operators.create(TrueUP1D(), [shader, ])
         shader.write()
+        RenderState.is_fill_written = True
 
 
 def indent_xml(elem, level=0, indentsize=4):
